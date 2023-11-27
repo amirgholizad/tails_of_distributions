@@ -40,4 +40,4 @@ def log_returns(historical_data):
         Historical data must be a numpy array or pandas dataframe.
         """
         returns = np.log(historical_data) - np.log(historical_data.shift(1))
-        return returns 
+        return returns
