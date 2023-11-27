@@ -73,3 +73,15 @@ def density_function(returns, size, common_norm = True, bw_method='silverman', c
    if clf:
        plt.clf()
    return pd.DataFrame({"Rephurbished Returns": x, "Probability Density": y})
+
+
+def intersection_points(Return, grid_size):
+    first_quantile = Return.mean() - Return.std()
+    third_quantile = Return.mean() + Return.std()
+    PDF = density_function(Return, size=grid_size, common_norm=False, clf=True)
+    GDF = gaussian_fit(returns=Return, reph_returns=PDF["Rephurbished Returns"])
+    begin = abs(PDF["Rephurbished Returns"] - first_quantile).argmin()
+    end = abs(PDF["Rephurbished Returns"] - third_quantile).argmin()
+    first_intersection = np.where(PDF["Probability Density"][:begin] > GDF[:begin])[0].max()
+    second_intersection = np.where(PDF["Probability Density"][end:] > GDF[end:])[0].min() + end
+    return {"First Intersection": first_intersection, "Second Intersection": second_intersection}
