@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 import pandas as pd
 import yfinance as yf
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 
@@ -41,3 +42,34 @@ def log_returns(historical_data):
         """
         returns = np.log(historical_data) - np.log(historical_data.shift(1))
         return returns
+
+
+def gaussian_fit(returns, reph_returns):
+     mu = returns.mean()
+     sigma = returns.std()
+
+     a = 1/(sigma*np.sqrt(2*np.pi))
+     power = (-1*((reph_returns - mu)**2))/(2*(sigma**2))
+     return a*np.exp(power)
+
+
+# Defining a function that constructs the density function of a given distribution using KDE method
+def density_function(returns, size, common_norm = True, bw_method='silverman', clf=True, *args, **kwargs):
+   """
+   Constructs the pdf, f(x), of a given distribution, x (price returns) using Kernel Density Estimation method.
+   For additional information visit:
+        . https://en.wikipedia.org/wiki/Kernel_density_estimation#References
+        . https://seaborn.pydata.org/generated/seaborn.kdeplot.html
+   Arguments:
+           x: the grid (price returns)
+           N: the size of the reconstructed data
+           bw_method: bandwidth (smothing factor) of the Kernel Density Estimator. Default is set to 'silverman'.
+           """
+   graph_data = sns.kdeplot(data=returns,
+                            bw_method=bw_method, gridsize=size,
+                            *args, **kwargs)
+   x = graph_data.get_lines()[0].get_xdata()
+   y = graph_data.get_lines()[0].get_ydata()
+   if clf:
+       plt.clf()
+   return pd.DataFrame({"Rephurbished Returns": x, "Probability Density": y})
