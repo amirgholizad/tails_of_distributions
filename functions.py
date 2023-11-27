@@ -32,3 +32,12 @@ class yahoodata:
                               end=self.period2,
                               interval=self.interval)
         return history.dropna().reset_index().set_index("Date")
+    
+
+# Defining a function that calculates log-returns of a given security
+def log_returns(historical_data):
+        """
+        Historical data must be a numpy array or pandas dataframe.
+        """
+        returns = np.log(historical_data) - np.log(historical_data.shift(1))
+        return returns 
