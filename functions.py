@@ -36,19 +36,25 @@ class yahoodata:
 # Defining a function that calculates log-returns of a given security
 def log_returns(historical_data):
         """
-        Historical data must be a numpy array or pandas dataframe.
+        Historical data must be a numpy array or pandas dataframe
         """
         returns = np.log(historical_data) - np.log(historical_data.shift(1))
         return returns
 
 
 def gaussian_fit(returns, reph_returns):
-     mu = returns.mean()
-     sigma = returns.std()
+    """
+    Calculates the gaussian function for a given:
+        reph_returns: preferably a uniform grid
+        returns: original return values for obtaining mean and standard deviation
+    """
+    mu = returns.mean()
+    sigma = returns.std()
 
-     a = 1/(sigma*np.sqrt(2*np.pi))
-     power = (-1*((reph_returns - mu)**2))/(2*(sigma**2))
-     return a*np.exp(power)
+    a = 1/(sigma*np.sqrt(2*np.pi))
+    power = (-1*((reph_returns - mu)**2))/(2*(sigma**2))
+
+    return a*np.exp(power)
 
 
 # Defining a function that constructs the density function of a given distribution using KDE method
@@ -73,7 +79,16 @@ def density_function(returns, size, common_norm = True, bw_method='silverman', c
    return pd.DataFrame({"Rephurbished Returns": x, "Probability Density": y})
 
 
+# creating a function that finds the limits of tails
 def intersection_points(Return, PDF=[], GDF=[], grid_size=1000):
+    """
+    Finds the indices of where the reph_returns == R1 & R2:
+        Return: a dataframe containing rates of return
+        PDF: generated probability density function using KDE method
+             if not given, will be calculated
+        GDF: gaussian function from reph_return
+             if not given, will be calculated
+    """
     first_quantile = Return.mean() - Return.std()
     third_quantile = Return.mean() + Return.std()
 
@@ -84,40 +99,37 @@ def intersection_points(Return, PDF=[], GDF=[], grid_size=1000):
     first_intersection = abs(PDF["Rephurbished Returns"] - first_quantile).argmin()
     second_intersection = abs(PDF["Rephurbished Returns"] - third_quantile).argmin()
 
-
-    # begin = abs(PDF["Rephurbished Returns"] - first_quantile).argmin()
-    # end = abs(PDF["Rephurbished Returns"] - third_quantile).argmin()
-
-    # first_intersection = np.where(PDF["Probability Density"][:begin] > GDF[:begin])[0].max()
-    # second_intersection = np.where(PDF["Probability Density"][end:] > GDF[end:])[0].min() + end
-
-    # if type(first_intersection) != np.int64:
-    #     first_intersection = 0
-    # elif type(second_intersection) != np.int64:
-    #     second_intersection = len(PDF["Rephurbished Returns"])
-
     return [first_intersection, second_intersection]
 
-
+# a function that returns the area under the tails
 def tails(Return, PDF=[], GDF=[], grid_size=1000):
-
-    if len(PDF) == 0 and len(GDF) == 0:
+     
+     """
+    Calculates the difference between the tails of gaussian and KDE fits:
+        Return: a dataframe containing rates of return
+        PDF: generated probability density function using KDE method
+             if not given, will be calculated
+        GDF: gaussian function from reph_return
+             if not given, will be calculated
+    """
+     if len(PDF) == 0 and len(GDF) == 0:
         PDF = density_function(returns=Return, size=grid_size, common_norm=False, clf=True)
         GDF = gaussian_fit(returns=Return, reph_returns=PDF["Rephurbished Returns"])
 
-    inter_points  = intersection_points(Return, PDF, GDF, grid_size)
+     inter_points  = intersection_points(Return, PDF, GDF, grid_size)
 
-    gdf_left = np.trapz(y = GDF[:inter_points[0]], x = PDF["Rephurbished Returns"][:inter_points[0]])
-    gdf_right = np.trapz(y = GDF[inter_points[1]:], x = PDF["Rephurbished Returns"][inter_points[1]:])
-    gdf_total = gdf_left + gdf_right
+     gdf_left = np.trapz(y = GDF[:inter_points[0]], x = PDF["Rephurbished Returns"][:inter_points[0]])
+     gdf_right = np.trapz(y = GDF[inter_points[1]:], x = PDF["Rephurbished Returns"][inter_points[1]:])
+     gdf_total = gdf_left + gdf_right
 
-    pdf_left = np.trapz(y = PDF["Probability Density"][:inter_points[0]], x = PDF["Rephurbished Returns"][:inter_points[0]])
-    pdf_right = np.trapz(y = PDF["Probability Density"][inter_points[1]:], x = PDF["Rephurbished Returns"][inter_points[1]:])
-    pdf_total = pdf_left + pdf_right
+     pdf_left = np.trapz(y = PDF["Probability Density"][:inter_points[0]], x = PDF["Rephurbished Returns"][:inter_points[0]])
+     pdf_right = np.trapz(y = PDF["Probability Density"][inter_points[1]:], x = PDF["Rephurbished Returns"][inter_points[1]:])
+     pdf_total = pdf_left + pdf_right
     
-    return pdf_total - gdf_total
+     return pdf_total - gdf_total
 
 
+# plotting tails
 def tails_graph(ticker, returns, interval, grid_size=1000, c2='green'):
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10, 6), sharex=True)
 
@@ -152,4 +164,5 @@ def tails_graph(ticker, returns, interval, grid_size=1000, c2='green'):
     ax1.scatter(x=PDF["Rephurbished Returns"][inter_points[1]], y=GDF[inter_points[1]], color='black', marker='o', s=50)
     ax1.set_ylim([-0.1, 1.2*PDF["Probability Density"].max()])
     ax1.set_xlim([returns[interval].mean() - 5*returns[interval].std(), returns[interval].mean() + 5*returns[interval].std()])
+    plt.savefig(f"results/tails_{interval}.jpg")
     plt.show()
