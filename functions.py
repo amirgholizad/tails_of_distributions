@@ -1,5 +1,3 @@
-import time
-import datetime
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -75,13 +73,71 @@ def density_function(returns, size, common_norm = True, bw_method='silverman', c
    return pd.DataFrame({"Rephurbished Returns": x, "Probability Density": y})
 
 
-def intersection_points(Return, grid_size):
+def intersection_points(Return, PDF=[], GDF=[], grid_size=1000):
     first_quantile = Return.mean() - Return.std()
     third_quantile = Return.mean() + Return.std()
-    PDF = density_function(Return, size=grid_size, common_norm=False, clf=True)
-    GDF = gaussian_fit(returns=Return, reph_returns=PDF["Rephurbished Returns"])
+
+    if len(PDF) == 0 and len(GDF) == 0:
+        PDF = density_function(returns=Return, size=grid_size, common_norm=False, clf=True)
+        GDF = gaussian_fit(returns=Return, reph_returns=PDF["Rephurbished Returns"])
+
     begin = abs(PDF["Rephurbished Returns"] - first_quantile).argmin()
     end = abs(PDF["Rephurbished Returns"] - third_quantile).argmin()
     first_intersection = np.where(PDF["Probability Density"][:begin] > GDF[:begin])[0].max()
     second_intersection = np.where(PDF["Probability Density"][end:] > GDF[end:])[0].min() + end
-    return {"First Intersection": first_intersection, "Second Intersection": second_intersection}
+    return [first_intersection, second_intersection]
+
+
+def tails(Return, PDF=[], GDF=[], grid_size=1000):
+
+    if len(PDF) == 0 and len(GDF) == 0:
+        PDF = density_function(returns=Return, size=grid_size, common_norm=False, clf=True)
+        GDF = gaussian_fit(returns=Return, reph_returns=PDF["Rephurbished Returns"])
+
+    inter_points  = intersection_points(Return, PDF, GDF, grid_size)
+
+    gdf_left = np.trapz(y = GDF[:inter_points[0]], x = PDF["Rephurbished Returns"][:inter_points[0]])
+    gdf_right = np.trapz(y = GDF[inter_points[1]:], x = PDF["Rephurbished Returns"][inter_points[1]:])
+    gdf_total = gdf_left + gdf_right
+
+    pdf_left = np.trapz(y = PDF["Probability Density"][:inter_points[0]], x = PDF["Rephurbished Returns"][:inter_points[0]])
+    pdf_right = np.trapz(y = PDF["Probability Density"][inter_points[1]:], x = PDF["Rephurbished Returns"][inter_points[1]:])
+    pdf_total = pdf_left + pdf_right
+    
+    return pdf_total - gdf_total
+
+
+def tails_graph(ticker, returns, interval, grid_size=1000, c2='green'):
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10, 10), sharex=True)
+
+    ax1.set_title("Tails of Gaussian vs KDE Distributions ({})".format(ticker), fontweight="bold")
+    PDF = density_function(returns[interval], size=grid_size,
+                                common_norm=False, color='black',
+                                clf=False, ax=ax1, linestyle='--',
+                                label=f'KDE fit ({interval})')
+    GDF = gaussian_fit(returns=returns[interval], reph_returns=PDF["Rephurbished Returns"])
+    inter_points = intersection_points(returns[interval], PDF=PDF, GDF=GDF)
+    sns.lineplot(x=PDF["Rephurbished Returns"], y=GDF, ax=ax1, color=c2, label=f'Gaussian fit ({interval})', linestyle='-')
+    ax1.set_ylabel(ylabel="$Density(f(q))$", fontweight="bold", style="italic", fontsize = 16)
+    ax1.legend()
+    ax1.set_xlabel(xlabel="$Return(q)$", fontweight="bold", style="italic", fontsize = 16)
+    sns.set(style="whitegrid")
+
+
+    ax1.fill_between(PDF["Rephurbished Returns"], PDF["Probability Density"], 
+                    where = (PDF["Rephurbished Returns"].index < inter_points[0]),
+                    interpolate=True, color="grey")
+    ax1.fill_between(PDF["Rephurbished Returns"], PDF["Probability Density"], 
+                    where = (PDF["Rephurbished Returns"].index > inter_points[1]),
+                    interpolate=True, color="grey")
+    ax1.fill_between(PDF["Rephurbished Returns"], GDF, 
+                    where = (PDF["Rephurbished Returns"].index < inter_points[0]),
+                    interpolate=True, color=c2)
+    ax1.fill_between(PDF["Rephurbished Returns"], GDF, 
+                    where = (PDF["Rephurbished Returns"].index > inter_points[1]),
+                    interpolate=True, color=c2)
+
+    ax1.scatter(x=PDF["Rephurbished Returns"][inter_points[0]], y=GDF[inter_points[0]], color='black', marker='o', s=50)
+    ax1.scatter(x=PDF["Rephurbished Returns"][inter_points[1]], y=GDF[inter_points[1]], color='black', marker='o', s=50)
+    ax1.set_ylim([-0.1, 2.5])
+    plt.show()
