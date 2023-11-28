@@ -81,10 +81,21 @@ def intersection_points(Return, PDF=[], GDF=[], grid_size=1000):
         PDF = density_function(returns=Return, size=grid_size, common_norm=False, clf=True)
         GDF = gaussian_fit(returns=Return, reph_returns=PDF["Rephurbished Returns"])
 
-    begin = abs(PDF["Rephurbished Returns"] - first_quantile).argmin()
-    end = abs(PDF["Rephurbished Returns"] - third_quantile).argmin()
-    first_intersection = np.where(PDF["Probability Density"][:begin] > GDF[:begin])[0].max()
-    second_intersection = np.where(PDF["Probability Density"][end:] > GDF[end:])[0].min() + end
+    first_intersection = abs(PDF["Rephurbished Returns"] - first_quantile).argmin()
+    second_intersection = abs(PDF["Rephurbished Returns"] - third_quantile).argmin()
+
+
+    # begin = abs(PDF["Rephurbished Returns"] - first_quantile).argmin()
+    # end = abs(PDF["Rephurbished Returns"] - third_quantile).argmin()
+
+    # first_intersection = np.where(PDF["Probability Density"][:begin] > GDF[:begin])[0].max()
+    # second_intersection = np.where(PDF["Probability Density"][end:] > GDF[end:])[0].min() + end
+
+    # if type(first_intersection) != np.int64:
+    #     first_intersection = 0
+    # elif type(second_intersection) != np.int64:
+    #     second_intersection = len(PDF["Rephurbished Returns"])
+
     return [first_intersection, second_intersection]
 
 
@@ -108,7 +119,7 @@ def tails(Return, PDF=[], GDF=[], grid_size=1000):
 
 
 def tails_graph(ticker, returns, interval, grid_size=1000, c2='green'):
-    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10, 10), sharex=True)
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(10, 6), sharex=True)
 
     ax1.set_title("Tails of Gaussian vs KDE Distributions ({})".format(ticker), fontweight="bold")
     PDF = density_function(returns[interval], size=grid_size,
@@ -139,5 +150,6 @@ def tails_graph(ticker, returns, interval, grid_size=1000, c2='green'):
 
     ax1.scatter(x=PDF["Rephurbished Returns"][inter_points[0]], y=GDF[inter_points[0]], color='black', marker='o', s=50)
     ax1.scatter(x=PDF["Rephurbished Returns"][inter_points[1]], y=GDF[inter_points[1]], color='black', marker='o', s=50)
-    ax1.set_ylim([-0.1, 2.5])
+    ax1.set_ylim([-0.1, 1.2*PDF["Probability Density"].max()])
+    ax1.set_xlim([returns[interval].mean() - 5*returns[interval].std(), returns[interval].mean() + 5*returns[interval].std()])
     plt.show()
