@@ -87,7 +87,7 @@ def density_function(returns, size, common_norm=True,
 # creating a function that finds the limits of tails
 def intersection_points(Return, PDF=[], GDF=[], grid_size=1000):
     """
-    Finds the indices of where the reph_returns == R1 & R2:
+    Finds the indices of where the reph_returns == Q1 & Q2:
         Return: a dataframe containing rates of return
         PDF: generated probability density function using KDE method
              if not given, will be calculated
@@ -159,7 +159,6 @@ def tails_graph(ticker, returns, interval, grid_size=1000, c2='green'):
                  color=c2, label=f'Gaussian fit ({interval})', linestyle='-')
     ax1.set_ylabel(ylabel="$Density(f(q))$", fontweight="bold",
                    style="italic", fontsize=16)
-    ax1.legend()
     ax1.set_xlabel(xlabel="$Return(q)$", fontweight="bold",
                    style="italic", fontsize=16)
     sns.set(style="whitegrid")
@@ -178,11 +177,12 @@ def tails_graph(ticker, returns, interval, grid_size=1000, c2='green'):
                      interpolate=True, color=c2)
 
     ax1.scatter(x=PDF["Rephurbished Returns"][inter_points[0]],
-                y=GDF[inter_points[0]], color='black', marker='o', s=50)
+                y=GDF[inter_points[0]], color='black', marker='o', s=50, label='Q1')
     ax1.scatter(x=PDF["Rephurbished Returns"][inter_points[1]],
-                y=GDF[inter_points[1]], color='black', marker='o', s=50)
+                y=GDF[inter_points[1]], color='black', marker='x', s=50, label='Q3')
     ax1.set_ylim([-0.1, 1.2*PDF["Probability Density"].max()])
     ax1.set_xlim([returns[interval].mean() - 5*returns[interval].std(),
                   returns[interval].mean() + 5*returns[interval].std()])
-    plt.savefig(f"results/tails_{interval}.jpg")
+    ax1.legend()
+    plt.savefig(f"results/tails_{interval}.png")
     plt.show()

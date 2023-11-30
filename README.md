@@ -11,3 +11,5 @@ All functions used in the project are defined in `functions.py` python script.
 Dependancies are listed in `requirements.txt`.
 
 Use `pip install -r requirements.txt` to install dependencies. A couple of "unnecessary" dependencies not available? then use `cat requirements.txt | xargs -n 1 pip install` to skip them.
+
+After installing the dependencies, just run each block of code in `tails.ipynb` to see the results.
